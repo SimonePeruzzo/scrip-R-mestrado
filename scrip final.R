@@ -42,7 +42,7 @@ install.packages("vegan")
 # inicializando os pacotes
 library(esquisse)
 library(tidyr)
-library(coda)     ## MCMC utilities
+library(coda)     
 library(reshape2) 
 library(devtools)
 library(flexplot)
@@ -165,13 +165,5 @@ ggplot(dados, aes(x = Num_Ind, y = Hora_bloco )) +
 comparaD <- glht(Distind4, linfct = mcp(Diade = "Tukey")) ## compara os grupos
 summary(comparaD)
 contrast(emmeans(Distind4, specs="Comportamento"))
-glmmTMB:::Anova.glmmTMB(Distind4)
+glmmTMB:::Anova.glmmTMB(Distind4) ## informa a variável de maior peso nos modelos
 
-### médias marginais estimadas
-lsmeansE <- emmeans(Distind4, # modelo
-                    ~ Estrato, # efeito fixo
-                    cont="pairwise", # tipo de comparação
-                    type="response", # transforma os dados de volta ao original
-                    alpha=0.05) # nivel 
-
-lsmeansE
