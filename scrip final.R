@@ -120,29 +120,137 @@ Ord_plot(dados$AreaMPC) ## escolhe a melhor distribuição
 Ord_plot(centroide$Dist_centr)
 Ord_plot(proximidade$Distancia)
 
-## melhor modelo MPC
-Tamanho <- glmmTMB(Num_Ind ~  Soma_inseto +
-                     Dist_cent_bord + Soma_FAI + 
-                     Est_reg + Hora_bloco,data = dados, zi=~0, disp= ~1,
+### Área MPC - produtividade
+ProdMPC1 <- glmmTMB(AreaMPC ~  Inseto_1 +  FAI_1,
+                        data = dados, zi=~0, disp= ~1,
+                        family = nbinom2(link = "log"), na.action = "na.fail")
+summary(ProdMPC1)
+### Área MPC - área de risco potencial
+RiscMPC <- glmmTMB(AreaMPC ~  Dist_cent_bord + Est_reg,
+                    data = dados, zi=~0, disp= ~1,
+                    family = nbinom2(link = "log"), na.action = "na.fail")
+summary(RiscMPC)
+comparaT <- glht(RiscMPC, linfct = mcp(Est_reg = "Tukey")) ## compara os grupos
+summary(comparaT)
+
+### Tamanho do grupo - produtividade
+TamanhoProd <- glmmTMB(Num_Ind ~  Inseto_1 + FAI_1 
+              ,data = dados, zi=~0, disp= ~1,
                    family = nbinom2(link = "log"), na.action = "na.fail")
-summary(Tamanho)
+summary(TamanhoProd)
+### Tamanho do grupo - área de risco potencial
+TamanhoRisc <- glmmTMB(Num_Ind ~  Dist_cent_bord + Est_reg  
+                       ,data = dados, zi=~0, disp= ~1,
+                       family = nbinom2(link = "log"), na.action = "na.fail")
+summary(TamanhoRisc)
+comparaTR <- glht(TamanhoRisc, linfct = mcp(Est_reg = "Tukey")) ## compara os grupos
+summary(comparaTR)
 
-## melhor modelo Centroide
-Discent3B <- glmmTMB(Beta ~ Individuo + Soma_fruta + 
-                       Soma_FAI + Pluviosidade + Soma_Insetos + 
-                       Dist_borda +Dist_borda +
-                       Est_reg + Comportamento + Estrato,zi=~1, disp= ~1,
-                     data = centroide, family = nbinom2(link = "log"),na.action = "na.fail")
-summary(Discent3B)
-
-## melhor modelo distancia
-Distind4 <- glmmTMB(Distancia ~ Diade + Dist_borda + Soma_FAI*Soma_Inseto +
-                      Estrato + Comportamento + (1|Varredura), 
+## Proximidade - faixa sexo/etária
+Distind4 <- glmmTMB(Distancia ~  Individuo_1 + (1|Individuo_2) + (1|Comportamento) + (1|Varredura), 
                     data = proximidade,
                     family = nbinom2(link = "log"), na.action = "na.fail")
 summary(Distind4)
+comparaDist <- glht(Distind4, linfct = mcp(Individuo_1 = "Tukey")) ## compara os grupos
+summary(comparaDist)
+## Proximidade - área de risco potencial
+Distind5 <- glmmTMB(Distancia ~  Individuo_1 + (1|Individuo_2) + Dist_borda + Est_reg
+                    + (1|Varredura) + Estrato, 
+                    data = proximidade,
+                    family = nbinom2(link = "log"), na.action = "na.fail")
+summary(Distind5)
+comparaDist1 <- glht(Distind5, linfct = mcp(Est_reg = "Tukey")) ## compara os grupos
+summary(comparaDist1)
+comparaDist2 <- glht(Distind5, linfct = mcp(Estrato = "Tukey")) ## compara os grupos
+summary(comparaDist2)
+## Centroide  - produtividade
+Discent3 <- glmmTMB(Dist_centr ~ Individuo + 
+                      FAI_1 +Insetos_1 + Fruta_1+(1|Comportamento)
+                      ,zi=~1, disp= ~1,
+                    data = centroide, family = nbinom2(link = "log"),na.action = "na.fail")
+summary(Discent3)
+## Centroide  - área de risco potencial
+Discent4 <- glmmTMB(Dist_centr ~ Individuo + 
+                      Dist_borda + Estrato + Est_reg+(1|Comportamento)
+                    ,zi=~1, disp= ~1,
+                    data = centroide, family = nbinom2(link = "log"),na.action = "na.fail")
+summary(Discent4)
+comparaDist3 <- glht(Discent4, linfct = mcp(Est_reg = "Tukey")) ## compara os grupos
+summary(comparaDist3)
+comparaDist4 <- glht(Discent4, linfct = mcp(Estrato = "Tukey")) ## compara os grupos
+summary(comparaDist4)
 
-#escolhendo melhor modelo - repetir para cada análise
+### testes de Simpson, Shannon e Pleiou
+
+## valores menores que 2 significam baixa diversidade
+Shannon <- diversity(diversidade)
+## indica a homogeniedade - valores mais proximos a 1 = população mais homogenea
+Pielou <- Shannon/log(specnumber(diversidade)) 
+## indice de dominância - quanto maior o indice menor a diversidade - proximo a 1 uma especie esta dominando
+Simpson <- diversity(diversidade, "simpson")
+Simpson
+
+### Gráficos de densidade
+## número de indivíduos no grupo
+Num_Isn <- ggplot(dados, aes(x = Num_Ind, y = Inseto_1)) + 
+  geom_density_ridges_gradient(aes(fill = ..x..)) + 
+  scale_fill_gradientn(colours = rev(brewer.pal(9, "Spectral")))+
+  labs(x = "Número de indivíduos no grupo",
+       y = "Produtividade de insetos (Kg/ha)",fill = "Nº Ind")+ 
+  theme_minimal()
+Num_Est <- ggplot(dados, aes(x = Num_Ind, y = Est_reg )) + 
+  geom_density_ridges_gradient(aes(fill = ..x..)) + 
+  scale_fill_gradientn(colours = rev(brewer.pal(9, "Spectral")))+
+  labs(x = "Número de indivíduos no grupo",
+       y = "Estágio de regeneração utilizado", fill = "Nº Ind")+ 
+  theme_minimal()
+Num_Isn + Num_Est  ## imprime os dois gráficos um ao lado do outro
+## área do MPC
+Area_ins <- ggplot(dados, aes(x = AreaMPC, y = Inseto_1)) + 
+  geom_density_ridges_gradient(aes(fill = ..x..)) + 
+  scale_fill_gradientn(colours = rev(brewer.pal(9, "Spectral")))+
+  labs(x = "Área MPC Ponderada (m2)",
+       y = "Produtividade de insetos (Kg/ha)",fill = "m2")+ 
+  theme_minimal()
+Area_est <- ggplot(dados, aes(x = AreaMPC, y = Est_reg)) + 
+  geom_density_ridges_gradient(aes(fill = ..x..)) + 
+  scale_fill_gradientn(colours = rev(brewer.pal(9, "Spectral")))+
+  labs(x = "Área MPC Ponderada (m2)",
+       y = "Estágio de regeneração utilizado",fill = "m2")+ 
+  theme_minimal()
+Area_ins + Area_est
+## proximidade interindividual
+Dist_est <- ggplot(proximidade, aes(x = Distancia, y = Est_reg)) + 
+  geom_density_ridges_gradient(aes(fill = ..x..)) + 
+  scale_fill_gradientn(colours = rev(brewer.pal(9, "Spectral")))+
+  labs(x = "Distância interindividual (m)",
+       y = "Estágio de regeneração utilizado",fill = "m")+ 
+  theme_minimal()
+Dist_estra <- ggplot(proximidade, aes(x = Distancia, y = Estrato)) + 
+  geom_density_ridges_gradient(aes(fill = ..x..)) + 
+  scale_fill_gradientn(colours = rev(brewer.pal(9, "Spectral")))+
+  labs(x = "Distância interindividual (m)",
+       y = "Substrato utilizado (1=Chão)",fill = "m")+ 
+  theme_minimal()
+
+Dist_est + Dist_estra
+## proximidade ao centroide
+Cent_ind <- ggplot(centroide, aes(x = Dist_centr, y = Individuo)) + 
+  geom_density_ridges_gradient(aes(fill = ..x..)) + 
+  scale_fill_gradientn(colours = rev(brewer.pal(9, "Spectral")))+
+  labs(x = "Distância em relação ao centroide (m)",
+       y = "Classe sexo/etária",fill = "m")+ 
+  theme_minimal()
+Cent_ins <- ggplot(centroide, aes(x = Dist_centr, y = Insetos_1)) + 
+  geom_density_ridges_gradient(aes(fill = ..x..)) + 
+  scale_fill_gradientn(colours = rev(brewer.pal(9, "Spectral")))+
+  labs(x = "Distância em relação ao centroide (m)",
+       y = "Produtividade de Insetos (kg/ha)",fill = "m")+ 
+  theme_minimal()
+
+Cent_ind + Cent_ins
+
+#escolhendo melhor modelo - repetir para cada análise quando há muitas variáveis
 model1.set <- dredge(Tamanho, REML = FALSE)
 model1.top <- get.models(model1.set, subset = delta < 2)
 model1.avg <- model.avg(model1.top)
